@@ -281,6 +281,8 @@ class TransformExpanded extends React.Component {
                     //         target.targetType.push(propType.type);
                     //         this.drawConnection(statement.getID() + nodeExpression.getID(), source, target);
                     //     });
+                    } else if (TreeUtil.isRecordLiteralExpr(expression)) {
+                        this.drawKeyValueConnections(expression.getKeyValuePairs(), `${nodeExpID}:${i}`, nodeExpID);
                     } else {
                         // expression = this.transformNodeManager.getResolvedExpression(expression);
                         let sourceId = `${expression.getSource().trim()}:${viewId}`;
@@ -339,6 +341,45 @@ class TransformExpanded extends React.Component {
             this.drawConnection(sourceId, targetId, folded);
         });
         this.mapper.reposition(this.props.model.getID());
+    }
+
+    drawKeyValueConnections(keyValues, parentName, nodeExpID) {
+        const viewId = this.props.model.getID();
+        keyValues.forEach((keyValue) => {
+            const key = keyValue.getKey();
+            const value = keyValue.getValue();
+
+            const keyName = key.getSource().replace(/ /g, '').trim();
+
+            if (TreeUtil.isSimpleVariableRef(value) || TreeUtil.isFieldBasedAccessExpr(value)) {
+                let targetId = `${parentName}.${keyName}:${viewId}`;
+                let folded = false;
+                if (!this.targetElements[targetId]) {
+                    folded = true;
+                    targetId = this.getFoldedEndpointId(targetId, viewId, 'target');
+                }
+
+                if (!this.targetElements[targetId]) {
+                    folded = true;
+                    targetId = `${nodeExpID}:${viewId}`;
+                }
+
+                const valueName = value.getSource().replace(/ /g, '').trim();
+                let sourceId = `${valueName}:${viewId}`;
+
+                if (!this.sourceElements[sourceId]) {
+                    folded = true;
+                    sourceId = this.getFoldedEndpointId(sourceId, viewId, 'source');
+                }
+
+                this.drawConnection(sourceId, targetId, folded);
+                return;
+            }
+
+            if (TreeUtil.isRecordLiteralExpr(value)) {
+                this.drawKeyValueConnections(value.getKeyValuePairs(), `${parentName}.${keyName}`, nodeExpID);
+            }
+        })
     }
 
     /**
